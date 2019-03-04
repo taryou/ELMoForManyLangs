@@ -409,6 +409,7 @@ def train():
   cmd = argparse.ArgumentParser(sys.argv[0], conflict_handler='resolve')
   cmd.add_argument('--seed', default=1, type=int, help='The random seed.')
   cmd.add_argument('--gpu', default=-1, type=int, help='Use id of gpu, -1 if cpu.')
+  cmd.add_argument('--resume', default=False, type=bool, help='Resume training')
 
   cmd.add_argument('--train_path', required=True, help='The path to the training file.')
   cmd.add_argument('--valid_path', help='The path to the development file.')
@@ -573,6 +574,8 @@ def train():
   nclasses = len(label_to_ix)
 
   model = Model(config, word_emb_layer, char_emb_layer, nclasses, use_cuda)
+  if opt.resume:
+    model.load_model(opt.model)
   logging.info(str(model))
   if use_cuda:
     model = model.cuda()
