@@ -463,7 +463,7 @@ def train():
   torch.manual_seed(opt.seed)
   random.seed(opt.seed)
   if opt.gpu >= 0:
-    torch.cuda.set_device(opt.gpu)
+    #torch.cuda.set_device(opt.gpu)
     if opt.seed > 0:
       torch.cuda.manual_seed(opt.seed)
 
