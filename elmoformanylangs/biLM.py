@@ -362,14 +362,21 @@ def train_model(epoch, opt, model, optimizer,
         if train_ppl < best_train:
           best_train = train_ppl
           logging.info("New record achieved on training dataset!")
-          model.save_model(opt.model, opt.save_classify_layer)      
+
+          if opt.parallel:
+            model.module.save_model(opt.model, opt.save_classify_layer)
+          else:
+            model.save_model(opt.model, opt.save_classify_layer)
       else:
         valid_ppl = eval_model(model, valid)
         logging.info("Epoch={} iter={} lr={:.6f} valid_ppl={:.6f}".format(
           epoch, cnt, optimizer.param_groups[0]['lr'], valid_ppl))
 
         if valid_ppl < best_valid:
-          model.save_model(opt.model, opt.save_classify_layer)
+          if opt.parallel:
+            model.module.save_model(opt.model, opt.save_classify_layer)
+          else:
+            model.save_model(opt.model, opt.save_classify_layer)
           best_valid = valid_ppl
           logging.info("New record achieved!")
 
@@ -410,6 +417,7 @@ def train():
   cmd.add_argument('--seed', default=1, type=int, help='The random seed.')
   cmd.add_argument('--gpu', default=-1, type=int, help='Use id of gpu, -1 if cpu.')
   cmd.add_argument('--resume', default=False, type=bool, help='Resume training')
+  cmd.add_argument('--parallel', default=True, type=bool, help='DataParallel training')
 
   cmd.add_argument('--train_path', required=True, help='The path to the training file.')
   cmd.add_argument('--valid_path', help='The path to the development file.')
@@ -575,8 +583,12 @@ def train():
 
   model = Model(config, word_emb_layer, char_emb_layer, nclasses, use_cuda)
   if opt.resume:
+    logging.info('use resume')
     model.load_model(opt.model)
   logging.info(str(model))
+  if opt.parallel:
+    logging.info('use parallel')
+    model = nn.DataParallel(model)
   if use_cuda:
     model = model.cuda()
 
