@@ -90,6 +90,7 @@ class SampledSoftmaxLayer(nn.Module):
     #  _y = _y.to(torch.device('cuda:0'))
     #  samples = samples.to(torch.device('cuda:0'))
 
+    print(x.size(), self.embedding_matrix.size(), _y.size())
     tag_scores = (x.matmul(self.embedding_matrix.cpu())).view(_y.size(0), -1) + \
                  (self.column_bias.forward(samples)).view(1, -1) 
     return self.criterion(tag_scores, _y)
