@@ -32,12 +32,12 @@ class SoftmaxLayer(nn.Module):
 
 
 class SampledSoftmaxLayer(nn.Module):
+  all_word = []
+  all_word_to_column = {0: 0}
   """
 
   """
   def __init__(self, output_dim, n_class, n_samples, use_cuda):
-    all_word = []
-    all_word_to_column = {0: 0}
     """
 
     :param output_dim:
