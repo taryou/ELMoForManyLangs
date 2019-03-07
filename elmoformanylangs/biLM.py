@@ -281,16 +281,20 @@ class Model(nn.Module):
     #if self.use_cuda:
     #  word_inp = word_inp.cuda()
     word_inp = word_inp.view(-1).tolist()
+    forward_ = forward.view(-1, self.output_dim).tolist()
+    backward_ = backward.view(-1, self.output_dim).tolist()
 
     mask1 = Variable(mask_package[1].cuda()).cuda() if self.use_cuda else Variable(mask_package[1])
     mask2 = Variable(mask_package[2].cuda()).cuda() if self.use_cuda else Variable(mask_package[2])
-
-    forward_x = forward.contiguous().view(-1, self.output_dim).index_select(0, mask1)
+    mask1_ = mask_package[1].tolist()
     mask2_ = mask_package[2].tolist()
+
+    #forward_x = forward.contiguous().view(-1, self.output_dim).index_select(0, mask1)
+    forward_x = torch.tensor([ v for i, v in enumerate(forward_) if i in mask1_])
     forward_y = [ v for i, v in enumerate(word_inp) if i in mask2_]
 
-    backward_x = backward.contiguous().view(-1, self.output_dim).index_select(0, mask2)
-    mask1_ = mask_package[1].tolist()
+    #backward_x = backward.contiguous().view(-1, self.output_dim).index_select(0, mask2)
+    backward_x = torch._tensor([ v for i, v in enumerate(backward_) if i in mask1_])
     backward_y = [ v for i, v in enumerate(word_inp) if i in mask1_]
 
     return self.classify_layer(forward_x, forward_y), self.classify_layer(backward_x, backward_y)
