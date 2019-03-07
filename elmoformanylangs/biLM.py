@@ -276,8 +276,7 @@ class Model(nn.Module):
     encoder_output = F.dropout(encoder_output, self.config['dropout'], self.training)
     forward, backward = encoder_output.split(self.output_dim, 2)
 
-    print(type(word_inp))
-    word_inp = torch.tensor(word_inp, dtype=torch.int64, device=torch.device('cuda'))
+    print(word_inp.size())
     if self.use_cuda:
       word_inp = word_inp.cuda()
 
