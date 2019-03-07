@@ -90,8 +90,8 @@ class SampledSoftmaxLayer(nn.Module):
       _y = _y.cuda()
       samples = samples.cuda()
 
-    print(x.size(), self.embedding_matrix.size(), _y.size())
-    tag_scores = (x.matmul(self.embedding_matrix.cpu())).view(_y.size(0), -1) + \
+    print(x.size(), self.embedding_matrix.size(), _y.size(), samples.size())
+    tag_scores = (x.matmul(self.embedding_matrix)).view(_y.size(0), -1) + \
                  (self.column_bias.forward(samples)).view(1, -1) 
     return self.criterion(tag_scores, _y)
 
