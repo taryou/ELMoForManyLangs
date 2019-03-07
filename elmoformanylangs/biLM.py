@@ -294,7 +294,7 @@ class Model(nn.Module):
     forward_y = [ v for i, v in enumerate(word_inp) if i in mask2_]
 
     #backward_x = backward.contiguous().view(-1, self.output_dim).index_select(0, mask2)
-    backward_x = torch._tensor([ v for i, v in enumerate(backward_) if i in mask1_])
+    backward_x = torch.tensor([ v for i, v in enumerate(backward_) if i in mask2_])
     backward_y = [ v for i, v in enumerate(word_inp) if i in mask1_]
 
     return self.classify_layer(forward_x, forward_y), self.classify_layer(backward_x, backward_y)
