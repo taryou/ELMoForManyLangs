@@ -258,7 +258,7 @@ class Model(nn.Module):
 
     if self.training and classifier_name == 'cnn_softmax' or classifier_name == 'sampled_softmax':
       mask0_ = mask_package[0].tolist()
-      mask0_ = torch.tensor([ v % len(mask0_) for v in mask0_])
+      #mask0_ = torch.tensor([ v % len(mask0_) for v in mask0_])
       self.classify_layer.update_negative_samples(word_inp, chars_inp, mask0_)
       self.classify_layer.update_embedding_matrix()
 
@@ -279,7 +279,7 @@ class Model(nn.Module):
     encoder_output = F.dropout(encoder_output, self.config['dropout'], self.training)
     forward, backward = encoder_output.split(self.output_dim, 2)
 
-    print(word_inp.size(), mask_package[2].size(), forward.size(), backward.size(), mask_package[1].size(), mask_package[2].size())
+    print(word_inp.size(), mask_package[2].size(), forward.size(), backward.size(), mask_package[0].size(),  mask_package[1].size(), mask_package[2].size())
     #if self.use_cuda:
     #  word_inp = word_inp.cuda()
     word_inp = word_inp.view(-1).tolist()
