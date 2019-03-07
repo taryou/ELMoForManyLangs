@@ -96,8 +96,8 @@ class SampledSoftmaxLayer(nn.Module):
     if self.use_cuda:
       A = A.cuda()
     L = min(A.size(1), samples.size(0))
-    A = A[:, L]
-    tag_scores = A + (self.column_bias.forward(samples)).view(1, -1)[:, L]
+    A = A[:, :L]
+    tag_scores = A + (self.column_bias.forward(samples)).view(1, -1)[:, :L]
     return self.criterion(tag_scores, _y)
 
   def update_embedding_matrix(self, c_size=0):
