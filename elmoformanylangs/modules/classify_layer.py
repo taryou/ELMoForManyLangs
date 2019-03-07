@@ -64,15 +64,16 @@ class SampledSoftmaxLayer(nn.Module):
     self.oov_column.data.uniform_(-0.25, 0.25)
 
   def forward(self, x, y):
+    _y = torch.tensor(y.size(), dtype=y.dtype)
     if self.training:
       for i in range(y.size(0)):
-        y[i] = self.word_to_column.get(y[i].tolist())
+        _y[i] = self.word_to_column.get(y[i].tolist())
       samples = torch.LongTensor(len(self.word_to_column)).fill_(0)
       for word in self.negative_samples:
         samples[self.word_to_column[word]] = word
     else:
       for i in range(y.size(0)):
-        y[i] = self.all_word_to_column.get(y[i].tolist(), 0)
+        _y[i] = self.all_word_to_column.get(y[i].tolist(), 0)
       samples = torch.LongTensor(len(self.all_word_to_column)).fill_(0)
       for word in self.all_word:
         samples[self.all_word_to_column[word]] = word
@@ -80,9 +81,9 @@ class SampledSoftmaxLayer(nn.Module):
     if self.use_cuda:
       samples = samples.cuda()
 
-    tag_scores = (x.matmul(self.embedding_matrix)).view(y.size(0), -1) + \
+    tag_scores = (x.matmul(self.embedding_matrix)).view(_y.size(0), -1) + \
                  (self.column_bias.forward(samples)).view(1, -1) 
-    return self.criterion(tag_scores, y)
+    return self.criterion(tag_scores, _y)
 
   def update_embedding_matrix(self):
     word_inp, chars_inp = [], []
