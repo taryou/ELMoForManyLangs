@@ -11,6 +11,7 @@ import time
 import random
 import logging
 import json
+import threading
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -68,10 +69,21 @@ def read_corpus(path, max_chars=None, max_sent_len=20):
   if os.path.isfile(path):
     return read_corpus_original(path, max_chars, max_sent_len)
   elif os.path.isdir(path):
-    pass
+    threadlist = []
+    datasets = []
+    for f in glob.glob(os.path.join(path, '*')):
+      thread = threading.Thread(target=read_corpus_original, args=([path, max_chars, max_sent_len, datasets]), name="thread%d" % f)
+      threadlist.append(thread)
+
+    for th in threadlist:
+      th.start()
+
+    for th in threadlist:
+      th.join()
+    return datasets
 
 
-def read_corpus_original(path, max_chars=None, max_sent_len=20):
+def read_corpus_original(path, max_chars=None, max_sent_len=20, results=None):
   """
   read raw text file
   :param path: str
@@ -89,6 +101,8 @@ def read_corpus_original(path, max_chars=None, max_sent_len=20):
         data.append(token)
       data.append('<eos>')
   dataset = break_sentence(data, max_sent_len)
+  if results is not None:
+    results.extend(dataset)
   return dataset
 
 
