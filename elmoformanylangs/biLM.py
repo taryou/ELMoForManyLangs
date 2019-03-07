@@ -72,7 +72,7 @@ def read_corpus(path, max_chars=None, max_sent_len=20):
     threadlist = []
     datasets = []
     for f in glob.glob(os.path.join(path, '*')):
-      thread = threading.Thread(target=read_corpus_original, args=([path, max_chars, max_sent_len, datasets]), name="thread-%s" % f)
+      thread = threading.Thread(target=read_corpus_original, args=([f, max_chars, max_sent_len, datasets]), name="thread-%s" % f)
       threadlist.append(thread)
 
     for th in threadlist:
