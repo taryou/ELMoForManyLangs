@@ -380,7 +380,7 @@ def train_model(epoch, opt, model, optimizer,
     total_loss += loss_forward.sum().data.item()
     n_tags = sum(lens)
     total_tag += n_tags
-    loss.backward()
+    loss.sum().backward()
 
     torch.nn.utils.clip_grad_norm_(model.parameters(), opt.clip_grad)
     optimizer.step()
