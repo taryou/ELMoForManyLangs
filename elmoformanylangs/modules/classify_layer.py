@@ -64,10 +64,10 @@ class SampledSoftmaxLayer(nn.Module):
     self.oov_column.data.uniform_(-0.25, 0.25)
 
   def forward(self, x, y):
+    print(type(y))
     _y = torch.tensor(y.size(), dtype=y.dtype)
     yy = y.tolist()
     print(y.size())
-    print(self.word_to_column)
     if self.training:
       for i in range(len(yy)):
         print(yy[i])
@@ -76,8 +76,8 @@ class SampledSoftmaxLayer(nn.Module):
       for word in self.negative_samples:
         samples[self.word_to_column[word]] = word
     else:
-      for i in range(y.size(0)):
-        _y[i] = self.all_word_to_column.get(y[i].tolist(), 0)
+      for i in range(len(yy)):
+        _y[i] = self.all_word_to_column.get(yy[i], 0)
       samples = torch.LongTensor(len(self.all_word_to_column)).fill_(0)
       for word in self.all_word:
         samples[self.all_word_to_column[word]] = word
