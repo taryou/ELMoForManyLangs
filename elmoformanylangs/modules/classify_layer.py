@@ -65,6 +65,7 @@ class SampledSoftmaxLayer(nn.Module):
 
   def forward(self, x, y):
     print(type(y))
+    x = x.to(torch.device('cpu'))
     _y = torch.empty(len(y), dtype=torch.int64, device=torch.device('cpu'))
     #if self.use_cuda:
     #  _y = _y.cuda()
