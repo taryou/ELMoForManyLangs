@@ -288,6 +288,8 @@ class Model(nn.Module):
     mask2 = Variable(mask_package[2].cuda()).cuda() if self.use_cuda else Variable(mask_package[2])
     mask1_ = mask_package[1].tolist()
     mask2_ = mask_package[2].tolist()
+    mask1_ = [ v % len(mask1_) for v in mask1_]
+    mask2_ = [ v % len(mask2_) for v in mask2_]
 
     #forward_x = forward.contiguous().view(-1, self.output_dim).index_select(0, mask1)
     forward_x = torch.tensor([ v for i, v in enumerate(forward_) if i in mask1_])
