@@ -86,7 +86,8 @@ class SampledSoftmaxLayer(nn.Module):
         samples[self.all_word_to_column[word]] = word
 
     if self.use_cuda:
-      samples = samples.cuda()
+      _y = _y.to('cuda:0')
+      samples = samples.to('cuda:0')
 
     tag_scores = (x.matmul(self.embedding_matrix)).view(_y.size(0), -1) + \
                  (self.column_bias.forward(samples)).view(1, -1) 
