@@ -55,8 +55,20 @@ def break_sentence(sentence, max_sent_len):
     cur += max_sent_len
   return ret
 
+def read_corpus(path, max_chars=None, max_sent_len=20, parallel=False):
+  """
+  read raw text file
+  :param path: str
+  :param max_chars: int
+  :param max_sent_len: int
+  :return:
+  """
 
-def read_corpus(path, max_chars=None, max_sent_len=20):
+  if not parallel:
+    return read_corpus_original(path, max_chars, max_sent_len)
+
+
+def read_corpus_original(path, max_chars=None, max_sent_len=20):
   """
   read raw text file
   :param path: str
@@ -346,7 +358,7 @@ def train_model(epoch, opt, model, optimizer,
     total_tag += n_tags
     loss.backward()
 
-    torch.nn.utils.clip_grad_norm(model.parameters(), opt.clip_grad)
+    torch.nn.utils.clip_grad_norm_(model.parameters(), opt.clip_grad)
     optimizer.step()
     if cnt * opt.batch_size % 1024 == 0:
       logging.info("Epoch={} iter={} lr={:.6f} train_ppl={:.6f} time={:.2f}s".format(
