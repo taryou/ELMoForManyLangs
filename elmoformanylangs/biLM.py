@@ -284,7 +284,9 @@ class Model(nn.Module):
     mask2 = Variable(mask_package[2].cuda()).cuda() if self.use_cuda else Variable(mask_package[2])
 
     forward_x = forward.contiguous().view(-1, self.output_dim).index_select(0, mask1)
-    forward_y = word_inp.view(-1).contiguous().index_select(0, mask2).tolist()
+    forward_y = word_inp.view(-1).contiguous().tolist()
+    mask2_ = mask2.tolist()
+    forward_y = [ v for i, v in enumerate(forward_y) if i in mask2_]
 
     backward_x = backward.contiguous().view(-1, self.output_dim).index_select(0, mask2)
     backward_y = word_inp.view(-1).contiguous().index_select(0, mask1).tolist()
