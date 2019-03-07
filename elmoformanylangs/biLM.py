@@ -257,7 +257,9 @@ class Model(nn.Module):
     classifier_name = self.config['classifier']['name'].lower()
 
     if self.training and classifier_name == 'cnn_softmax' or classifier_name == 'sampled_softmax':
-      self.classify_layer.update_negative_samples(word_inp, chars_inp, mask_package[0])
+      mask0_ = mask_package[0].tolist()
+      mask0_ = torch.tensor([ v % len(mask0_) for v in mask0_])
+      self.classify_layer.update_negative_samples(word_inp, chars_inp, mask0_)
       self.classify_layer.update_embedding_matrix()
 
     token_embedding = self.token_embedder(word_inp, chars_inp, (mask_package[0].size(0), mask_package[0].size(1)))
