@@ -95,7 +95,7 @@ class SampledSoftmaxLayer(nn.Module):
                  (self.column_bias.forward(samples)).view(1, -1) 
     return self.criterion(tag_scores, _y)
 
-  def update_embedding_matrix(self, c_size):
+  def update_embedding_matrix(self, c_size=0):
     word_inp, chars_inp = [], []
     if self.training:  
       columns = torch.LongTensor(len(self.negative_samples) + 1)
