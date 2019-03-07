@@ -67,7 +67,7 @@ class SampledSoftmaxLayer(nn.Module):
     print(type(y))
     _y = torch.tensor(len(y), dtype=torch.int64)
     #yy = y.cpu().tolist()
-    print(y.size())
+    print(len(y))
     if self.training:
       for i in range(len(y)):
         #v = y.index_select(0, torch.tensor([i], dtype=torch.int64, device=torch.device('cuda')))
