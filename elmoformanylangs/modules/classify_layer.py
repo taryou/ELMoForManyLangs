@@ -65,7 +65,7 @@ class SampledSoftmaxLayer(nn.Module):
 
   def forward(self, x, y):
     print(type(y))
-    _y = torch.empty(len(y), dtype=torch.int64)
+    _y = torch.empty(len(y), dtype=torch.int64, device=torch.device('cpu'))
     #if self.use_cuda:
     #  _y = _y.cuda()
     #yy = y.cpu().tolist()
@@ -75,19 +75,19 @@ class SampledSoftmaxLayer(nn.Module):
         #v = y.index_select(0, torch.tensor([i], dtype=torch.int64, device=torch.device('cuda')))
         #print(yy[i])
         _y[i] = self.word_to_column.get(y[i])
-      samples = torch.LongTensor(len(self.word_to_column)).fill_(0)
+      samples = torch.empty(len(self.word_to_column), dtype=torch.int64, device=torch.device('cpu')).fill_(0)
       for word in self.negative_samples:
         samples[self.word_to_column[word]] = word
     else:
       for i in range(len(y)):
         _y[i] = self.all_word_to_column.get(y[i], 0)
-      samples = torch.LongTensor(len(self.all_word_to_column)).fill_(0)
+      samples = torch.empty(len(self.all_word_to_column), dtype=torch.int64, device=torch.device('cpu')).fill_(0)
       for word in self.all_word:
         samples[self.all_word_to_column[word]] = word
 
-    if self.use_cuda:
-      _y = _y.to(torch.device('cuda:0'))
-      samples = samples.to(torch.device('cuda:0'))
+    #if self.use_cuda:
+    #  _y = _y.to(torch.device('cuda:0'))
+    #  samples = samples.to(torch.device('cuda:0'))
 
     tag_scores = (x.matmul(self.embedding_matrix)).view(_y.size(0), -1) + \
                  (self.column_bias.forward(samples)).view(1, -1) 
