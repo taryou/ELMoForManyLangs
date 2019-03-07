@@ -241,10 +241,10 @@ class Model(nn.Module):
     elif config['classifier']['name'].lower() == 'sampled_softmax':
       self.classify_layer = SampledSoftmaxLayer(self.output_dim, n_class, config['classifier']['n_samples'], use_cuda)
 
-    if use_parallel:
-      self.encoder = nn.DataParallel(self.encoder)
-      self.token_embedder = nn.DataParallel(self.token_embedder)
-      self.classify_layer = self.classify_layer.to(torch.device('cpu'))
+    #if use_parallel:
+    #  self.encoder = nn.DataParallel(self.encoder)
+    #  self.token_embedder = nn.DataParallel(self.token_embedder)
+    #  self.classify_layer = self.classify_layer.to(torch.device('cpu'))
 
   def forward(self, word_inp, chars_inp, mask_package):
     """
@@ -300,7 +300,7 @@ class Model(nn.Module):
     return self.classify_layer(forward_x, forward_y), self.classify_layer(backward_x, backward_y)
 
   def save_model(self, path, save_classify_layer):
-    if self.use_parallel:
+    if False:#self.use_parallel:
       torch.save(self.token_embedder.module.state_dict(), os.path.join(path, 'token_embedder.pkl'))
       torch.save(self.encoder.module.state_dict(), os.path.join(path, 'encoder.pkl'))
     else:
@@ -393,21 +393,22 @@ def train_model(epoch, opt, model, optimizer,
           best_train = train_ppl
           logging.info("New record achieved on training dataset!")
 
-          model.save_model(opt.model, opt.save_classify_layer)
-          #if opt.parallel:
-          #  model.module.save_model(opt.model, opt.save_classify_layer)
-          #else:
+          #model.save_model(opt.model, opt.save_classify_layer)
+          if opt.parallel:
+            model.module.save_model(opt.model, opt.save_classify_layer)
+          else:
+            model.save_model(opt.model, opt.save_classify_layer)
       else:
         valid_ppl = eval_model(model, valid)
         logging.info("Epoch={} iter={} lr={:.6f} valid_ppl={:.6f}".format(
           epoch, cnt, optimizer.param_groups[0]['lr'], valid_ppl))
 
         if valid_ppl < best_valid:
-          model.save_model(opt.model, opt.save_classify_layer)
-          #if opt.parallel:
-          #  model.module.save_model(opt.model, opt.save_classify_layer)
-          #else:
-          #  model.save_model(opt.model, opt.save_classify_layer)
+          #model.save_model(opt.model, opt.save_classify_layer)
+          if opt.parallel:
+            model.module.save_model(opt.model, opt.save_classify_layer)
+          else:
+            model.save_model(opt.model, opt.save_classify_layer)
           best_valid = valid_ppl
           logging.info("New record achieved!")
 
@@ -619,6 +620,7 @@ def train():
   logging.info(str(model))
   if opt.parallel:
     logging.info('use parallel')
+    model = nn.DataParallel(model)
   if use_cuda:
     model = model.cuda()
 
