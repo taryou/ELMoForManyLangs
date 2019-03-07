@@ -66,11 +66,11 @@ class SampledSoftmaxLayer(nn.Module):
     self.oov_column.data.uniform_(-0.25, 0.25)
 
   def forward(self, x, y):
-    print(type(y))
+    #print(type(y))
     x = x.cpu()
     _y = torch.empty(len(y), dtype=torch.int64)
     #yy = y.cpu().tolist()
-    print(len(y))
+    #print(len(y))
     if self.training:
       for i in range(len(y)):
         #v = y.index_select(0, torch.tensor([i], dtype=torch.int64, device=torch.device('cuda')))
@@ -90,7 +90,7 @@ class SampledSoftmaxLayer(nn.Module):
       _y = _y.cuda()
       samples = samples.cuda()
 
-    print(x.size(), self.embedding_matrix.size(), _y.size(), samples.size())
+    #print(x.size(), self.embedding_matrix.size(), _y.size(), samples.size())
     A = x.matmul(self.embedding_matrix.cpu()).view(_y.size(0), -1)
     A = A.to(dtype=torch.float32)
     if self.use_cuda:
@@ -145,7 +145,8 @@ class SampledSoftmaxLayer(nn.Module):
           else:
             while self.negative_samples[0] in in_batch:
               self.negative_samples = self.negative_samples[1:] + [self.negative_samples[0]]
-            self.word_to_column[word] = self.word_to_column.pop(self.negative_samples[0])
+            if self.negative_samples[0] in self.word_to_column:
+              self.word_to_column[word] = self.word_to_column.pop(self.negative_samples[0])
             self.negative_samples = self.negative_samples[1:] + [word]
 
 
