@@ -92,7 +92,7 @@ class SampledSoftmaxLayer(nn.Module):
 
     print(x.size(), self.embedding_matrix.size(), _y.size(), samples.size())
     A = x.matmul(self.embedding_matrix.cpu()).view(_y.size(0), -1)
-    tag_scores = (A.to(dtype=torch.float32) + (self.column_bias.forward(samples)).view(1, -1)[:, A.size(1)])
+    tag_scores = (A.to(dtype=torch.float32, device=torch.device('cpu')) + (self.column_bias.forward(samples)).view(1, -1)[:, A.size(1)])
     return self.criterion(tag_scores, _y)
 
   def update_embedding_matrix(self, c_size=0):
