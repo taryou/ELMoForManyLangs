@@ -67,8 +67,6 @@ class SampledSoftmaxLayer(nn.Module):
     print(type(y))
     x = x.cpu()
     _y = torch.empty(len(y), dtype=torch.int64)
-    #if self.use_cuda:
-    #  _y = _y.cuda()
     #yy = y.cpu().tolist()
     print(len(y))
     if self.training:
@@ -86,9 +84,9 @@ class SampledSoftmaxLayer(nn.Module):
       for word in self.all_word:
         samples[self.all_word_to_column[word]] = word
 
-    #if self.use_cuda:
-    #  _y = _y.to(torch.device('cuda:0'))
-    #  samples = samples.to(torch.device('cuda:0'))
+    if self.use_cuda:
+      _y = _y.cuda()
+      samples = samples.cuda()
 
     print(x.size(), self.embedding_matrix.size(), _y.size())
     tag_scores = (x.matmul(self.embedding_matrix.cpu())).view(_y.size(0), -1) + \
