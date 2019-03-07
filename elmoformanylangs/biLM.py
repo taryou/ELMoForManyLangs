@@ -276,7 +276,7 @@ class Model(nn.Module):
     encoder_output = F.dropout(encoder_output, self.config['dropout'], self.training)
     forward, backward = encoder_output.split(self.output_dim, 2)
 
-    print(word_inp.size())
+    print(word_inp.size(), mask_package[2].size())
     if self.use_cuda:
       word_inp = word_inp.cuda()
 
