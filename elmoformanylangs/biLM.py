@@ -55,7 +55,7 @@ def break_sentence(sentence, max_sent_len):
     cur += max_sent_len
   return ret
 
-def read_corpus(path, max_chars=None, max_sent_len=20, parallel=False):
+def read_corpus(path, max_chars=None, max_sent_len=20):
   """
   read raw text file
   :param path: str
@@ -64,7 +64,7 @@ def read_corpus(path, max_chars=None, max_sent_len=20, parallel=False):
   :return:
   """
 
-  if not parallel:
+  if os.path.isfile(path):
     return read_corpus_original(path, max_chars, max_sent_len)
 
 
