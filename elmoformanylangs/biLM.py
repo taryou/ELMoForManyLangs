@@ -331,7 +331,7 @@ def eval_model(model, valid):
   valid_w, valid_c, valid_lens, valid_masks = valid
   for w, c, lens, masks in zip(valid_w, valid_c, valid_lens, valid_masks):
     loss_forward, loss_backward = model.forward(w, c, masks)
-    total_loss += loss_forward.data.item()
+    total_loss += loss_forward.sum().data.item()
     n_tags = sum(lens)
     total_tag += n_tags
   model.train()
@@ -377,7 +377,7 @@ def train_model(epoch, opt, model, optimizer,
     loss_forward, loss_backward = model.forward(w, c, masks)
 
     loss = (loss_forward + loss_backward) / 2.0
-    total_loss += loss_forward.data.item()
+    total_loss += loss_forward.sum().data.item()
     n_tags = sum(lens)
     total_tag += n_tags
     loss.backward()
