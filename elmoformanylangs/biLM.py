@@ -24,6 +24,7 @@ from .dataloader import load_embedding
 from .utils import dict2namedtuple
 from collections import Counter
 import numpy as np
+from distutils.util import strtobool
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)-15s %(levelname)s: %(message)s')
 
@@ -416,8 +417,8 @@ def train():
   cmd = argparse.ArgumentParser(sys.argv[0], conflict_handler='resolve')
   cmd.add_argument('--seed', default=1, type=int, help='The random seed.')
   cmd.add_argument('--gpu', default=-1, type=int, help='Use id of gpu, -1 if cpu.')
-  cmd.add_argument('--resume', default=False, type=bool, help='Resume training')
-  cmd.add_argument('--parallel', default=True, type=bool, help='DataParallel training')
+  cmd.add_argument('--resume', default=False, type=strtobool, help='Resume training')
+  cmd.add_argument('--parallel', default=True, type=strtobool, help='DataParallel training')
 
   cmd.add_argument('--train_path', required=True, help='The path to the training file.')
   cmd.add_argument('--valid_path', help='The path to the development file.')
