@@ -231,10 +231,6 @@ class Model(nn.Module):
     elif config['encoder']['name'].lower() == 'lstm':
       self.encoder = LstmbiLm(config, use_cuda)
 
-    if use_parallel:
-      self.encoder = nn.DataParallel(self.encoder)
-      self.token_embedder = nn.DataParallel(self.token_embedder)
-
     self.output_dim = config['encoder']['projection_dim']
     if config['classifier']['name'].lower() == 'softmax':
       self.classify_layer = SoftmaxLayer(self.output_dim, n_class)
@@ -244,6 +240,11 @@ class Model(nn.Module):
                                             use_cuda)
     elif config['classifier']['name'].lower() == 'sampled_softmax':
       self.classify_layer = SampledSoftmaxLayer(self.output_dim, n_class, config['classifier']['n_samples'], use_cuda)
+
+    if use_parallel:
+      self.encoder = nn.DataParallel(self.encoder)
+      self.token_embedder = nn.DataParallel(self.token_embedder)
+      self.classify_layer = self.classify_layer.to(torch.device('cpu'))
 
   def forward(self, word_inp, chars_inp, mask_package):
     """
