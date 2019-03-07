@@ -65,8 +65,10 @@ class SampledSoftmaxLayer(nn.Module):
 
   def forward(self, x, y):
     _y = torch.tensor(y.size(), dtype=y.dtype)
+    print(y.size())
     if self.training:
       for i in range(y.size(0)):
+        print(y[i].tolist())
         _y[i] = self.word_to_column.get(y[i].tolist())
       samples = torch.LongTensor(len(self.word_to_column)).fill_(0)
       for word in self.negative_samples:
