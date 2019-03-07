@@ -36,6 +36,8 @@ class SampledSoftmaxLayer(nn.Module):
 
   """
   def __init__(self, output_dim, n_class, n_samples, use_cuda):
+    all_word = []
+    all_word_to_column = {0: 0}
     """
 
     :param output_dim:
@@ -51,8 +53,8 @@ class SampledSoftmaxLayer(nn.Module):
     self.negative_samples = []
     self.word_to_column = {0: 0}
 
-    self.all_word = []
-    self.all_word_to_column = {0: 0}
+    #self.all_word = []
+    #self.all_word_to_column = {0: 0}
 
     self.column_emb = nn.Embedding(n_class, output_dim)
     self.column_emb.weight.data.uniform_(-0.25, 0.25)
@@ -93,7 +95,7 @@ class SampledSoftmaxLayer(nn.Module):
                  (self.column_bias.forward(samples)).view(1, -1) 
     return self.criterion(tag_scores, _y)
 
-  def update_embedding_matrix(self):
+  def update_embedding_matrix(self, c_size):
     word_inp, chars_inp = [], []
     if self.training:  
       columns = torch.LongTensor(len(self.negative_samples) + 1)

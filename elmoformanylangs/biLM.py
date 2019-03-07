@@ -2,6 +2,7 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 import os
+import glob
 import errno
 import sys
 import codecs
@@ -66,6 +67,8 @@ def read_corpus(path, max_chars=None, max_sent_len=20):
 
   if os.path.isfile(path):
     return read_corpus_original(path, max_chars, max_sent_len)
+  elif os.path.isdir(path):
+    pass
 
 
 def read_corpus_original(path, max_chars=None, max_sent_len=20):
