@@ -65,7 +65,7 @@ class SampledSoftmaxLayer(nn.Module):
 
   def forward(self, x, y):
     print(type(y))
-    _y = torch.tensor(y.size(), dtype=y.dtype)
+    _y = torch.tensor(len(y), dtype=torch.int64)
     #yy = y.cpu().tolist()
     print(y.size())
     if self.training:
