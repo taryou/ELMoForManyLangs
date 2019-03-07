@@ -215,9 +215,10 @@ def create_batches(x, batch_size, word2id, char2id, config, perm=None, shuffle=T
 
 
 class Model(nn.Module):
-  def __init__(self, config, word_emb_layer, char_emb_layer, n_class, use_cuda=False):
+  def __init__(self, config, word_emb_layer, char_emb_layer, n_class, use_cuda=False, use_parallel=False):
     super(Model, self).__init__() 
     self.use_cuda = use_cuda
+    self.use_parallel = use_parallel
     self.config = config
 
     if config['token_embedder']['name'].lower() == 'cnn':
@@ -229,6 +230,10 @@ class Model(nn.Module):
       self.encoder = ElmobiLm(config, use_cuda)
     elif config['encoder']['name'].lower() == 'lstm':
       self.encoder = LstmbiLm(config, use_cuda)
+
+    if use_parallel:
+      self.encoder = nn.DataParallel(self.encoder)
+      self.token_embedder = nn.DataParallel(self.token_embedder)
 
     self.output_dim = config['encoder']['projection_dim']
     if config['classifier']['name'].lower() == 'softmax':
@@ -287,8 +292,12 @@ class Model(nn.Module):
     return self.classify_layer(forward_x, forward_y), self.classify_layer(backward_x, backward_y)
 
   def save_model(self, path, save_classify_layer):
-    torch.save(self.token_embedder.state_dict(), os.path.join(path, 'token_embedder.pkl'))    
-    torch.save(self.encoder.state_dict(), os.path.join(path, 'encoder.pkl'))
+    if self.use_parallel:
+      torch.save(self.token_embedder.module.state_dict(), os.path.join(path, 'token_embedder.pkl'))
+      torch.save(self.encoder.module.state_dict(), os.path.join(path, 'encoder.pkl'))
+    else:
+      torch.save(self.token_embedder.state_dict(), os.path.join(path, 'token_embedder.pkl'))
+      torch.save(self.encoder.state_dict(), os.path.join(path, 'encoder.pkl'))
     if save_classify_layer:
       torch.save(self.classify_layer.state_dict(), os.path.join(path, 'classifier.pkl'))
 
@@ -376,20 +385,21 @@ def train_model(epoch, opt, model, optimizer,
           best_train = train_ppl
           logging.info("New record achieved on training dataset!")
 
-          if opt.parallel:
-            model.module.save_model(opt.model, opt.save_classify_layer)
-          else:
-            model.save_model(opt.model, opt.save_classify_layer)
+          model.save_model(opt.model, opt.save_classify_layer)
+          #if opt.parallel:
+          #  model.module.save_model(opt.model, opt.save_classify_layer)
+          #else:
       else:
         valid_ppl = eval_model(model, valid)
         logging.info("Epoch={} iter={} lr={:.6f} valid_ppl={:.6f}".format(
           epoch, cnt, optimizer.param_groups[0]['lr'], valid_ppl))
 
         if valid_ppl < best_valid:
-          if opt.parallel:
-            model.module.save_model(opt.model, opt.save_classify_layer)
-          else:
-            model.save_model(opt.model, opt.save_classify_layer)
+          model.save_model(opt.model, opt.save_classify_layer)
+          #if opt.parallel:
+          #  model.module.save_model(opt.model, opt.save_classify_layer)
+          #else:
+          #  model.save_model(opt.model, opt.save_classify_layer)
           best_valid = valid_ppl
           logging.info("New record achieved!")
 
@@ -594,14 +604,13 @@ def train():
   
   nclasses = len(label_to_ix)
 
-  model = Model(config, word_emb_layer, char_emb_layer, nclasses, use_cuda)
+  model = Model(config, word_emb_layer, char_emb_layer, nclasses, use_cuda, opt.parallel)
   if opt.resume:
     logging.info('use resume')
     model.load_model(opt.model)
   logging.info(str(model))
   if opt.parallel:
     logging.info('use parallel')
-    model = nn.DataParallel(model)
   if use_cuda:
     model = model.cuda()
 
