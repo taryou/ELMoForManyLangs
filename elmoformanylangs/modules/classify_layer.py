@@ -73,10 +73,10 @@ class SampledSoftmaxLayer(nn.Module):
         samples[self.word_to_column[word]] = word
     else:
       for i in range(y.size(0)):
-        y[i] = self.all_word_to_column.get(y[i].tolist(), 0)
-      samples = torch.LongTensor(len(self.all_word_to_column)).fill_(0)
-      for word in self.all_word:
-        samples[self.all_word_to_column[word]] = word
+        y[i] = SampledSoftmaxLayer.all_word_to_column.get(y[i].tolist(), 0)
+      samples = torch.LongTensor(len(SampledSoftmaxLayer.all_word_to_column)).fill_(0)
+      for word in SampledSoftmaxLayer.all_word:
+        samples[SampledSoftmaxLayer.all_word_to_column[word]] = word
 
     if self.use_cuda:
       samples = samples.cuda()
@@ -98,10 +98,10 @@ class SampledSoftmaxLayer(nn.Module):
         columns[self.word_to_column[word]] = word
       columns[0] = 0
     else:
-      columns = torch.LongTensor(len(self.all_word) + 1)
-      samples = self.all_word
+      columns = torch.LongTensor(len(SampledSoftmaxLayer.all_word) + 1)
+      samples = SampledSoftmaxLayer.all_word
       for i, word in enumerate(samples):
-        columns[self.all_word_to_column[word]] = word
+        columns[SampledSoftmaxLayer.all_word_to_column[word]] = word
       columns[0] = 0
 
     if self.use_cuda:
@@ -122,9 +122,9 @@ class SampledSoftmaxLayer(nn.Module):
         if mask[i][j] == 0:
           continue
         word = word_inp[i][j].tolist()
-        if word not in self.all_word_to_column:
-          self.all_word.append(word)
-          self.all_word_to_column[word] = len(self.all_word_to_column)
+        if word not in SampledSoftmaxLayer.all_word_to_column:
+          SampledSoftmaxLayer.all_word.append(word)
+          SampledSoftmaxLayer.all_word_to_column[word] = len(SampledSoftmaxLayer.all_word_to_column)
 
         if word not in self.word_to_column:
           if len(self.negative_samples) < self.n_samples:
