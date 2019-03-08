@@ -360,6 +360,8 @@ def prarallel_reader(train_w, train_c, train_lens, train_masks, parallel):
   batch_c = []
   batch_l = []
   batch_m = []
+  print(type(train_w[0]), type(train_c[0]), type(train_lens[0]), type(train_masks[0]))
+
   for i in range(len(train_w)):
     c = i + 1
     batch_w.append(train_w[i])
