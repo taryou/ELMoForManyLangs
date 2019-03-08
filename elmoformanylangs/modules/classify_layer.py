@@ -32,6 +32,8 @@ class SoftmaxLayer(nn.Module):
 
 
 class SampledSoftmaxLayer(nn.Module):
+  all_word = []
+  all_word_to_column = {0: 0}
   """
 
   """
@@ -51,8 +53,6 @@ class SampledSoftmaxLayer(nn.Module):
     self.negative_samples = []
     self.word_to_column = {0: 0}
 
-    self.all_word = []
-    self.all_word_to_column = {0: 0}
 
     self.column_emb = nn.Embedding(n_class, output_dim)
     self.column_emb.weight.data.uniform_(-0.25, 0.25)
