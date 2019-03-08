@@ -67,7 +67,7 @@ class SampledSoftmaxLayer(nn.Module):
     if self.training:
       for i in range(y.size(0)):
         y[i] = self.word_to_column.get(y[i].tolist())
-      L = self.embedding_matrix.size(1)
+      L = max(len(self.word_to_column), len(self.negative_samples)+1)
       samples = torch.LongTensor(L).fill_(0)
       for word in self.negative_samples:
         samples[self.word_to_column[word]] = word
@@ -81,7 +81,12 @@ class SampledSoftmaxLayer(nn.Module):
     if self.use_cuda:
       samples = samples.cuda()
 
-    tag_scores = (x.matmul(self.embedding_matrix)).view(y.size(0), -1) + \
+    A = (x.matmul(self.embedding_matrix)).view(y.size(0), -1)
+    if samples.size(0) > A.size(1):
+      samples = torch.cat((samples, torch.zeros(samples.size(0) - A.size(1))), dim=0)
+    elif A.size(1) > samples.size(0):
+      A = torch.cat((A, torch.zeros((A.size(0), A.size(1) - samples.size(0))) ), dim=0)
+    tag_scores = (A + \
                  (self.column_bias.forward(samples)).view(1, -1) 
     return self.criterion(tag_scores, y)
 
