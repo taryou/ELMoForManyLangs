@@ -87,7 +87,7 @@ class SampledSoftmaxLayer(nn.Module):
     if samples.size(0) > A.size(1):
       samples = torch.cat((samples, torch.zeros(samples.size(0) - A.size(1), dtype=torch.int64, device=torch.device(dev))), dim=0)
     elif A.size(1) > samples.size(0):
-      A = torch.cat((A, torch.zeros((A.size(0), A.size(1) - samples.size(0)), device=torch.device(dev)) ), dim=0)
+      A = torch.cat((A, torch.zeros((A.size(0), A.size(1) - samples.size(0)), device=torch.device(dev)) ), dim=1)
     tag_scores = A + (self.column_bias.forward(samples)).view(1, -1)
     return self.criterion(tag_scores, y)
 
