@@ -78,14 +78,16 @@ class SampledSoftmaxLayer(nn.Module):
       for word in SampledSoftmaxLayer.all_word:
         samples[SampledSoftmaxLayer.all_word_to_column[word]] = word
 
+    dev = 'cpu'
     if self.use_cuda:
       samples = samples.cuda()
+      dev = 'cuda'
 
     A = (x.matmul(self.embedding_matrix)).view(y.size(0), -1)
     if samples.size(0) > A.size(1):
-      samples = torch.cat((samples, torch.zeros(samples.size(0) - A.size(1))), dim=0)
+      samples = torch.cat((samples, torch.zeros(samples.size(0) - A.size(1), device=torch.device(dev))), dim=0)
     elif A.size(1) > samples.size(0):
-      A = torch.cat((A, torch.zeros((A.size(0), A.size(1) - samples.size(0))) ), dim=0)
+      A = torch.cat((A, torch.zeros((A.size(0), A.size(1) - samples.size(0)), device=torch.device(dev)) ), dim=0)
     tag_scores = A + (self.column_bias.forward(samples)).view(1, -1)
     return self.criterion(tag_scores, y)
 
