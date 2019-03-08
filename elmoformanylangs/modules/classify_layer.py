@@ -97,7 +97,8 @@ class SampledSoftmaxLayer(nn.Module):
       columns = torch.LongTensor(len(self.negative_samples) + 1)
       samples = self.negative_samples
       for i, word in enumerate(samples):
-        columns[self.word_to_column[word]] = word
+        if word in self.word_to_column and self.word_to_column[word] < columns.size(0):
+          columns[self.word_to_column[word]] = word
       columns[0] = 0
     else:
       columns = torch.LongTensor(len(SampledSoftmaxLayer.all_word) + 1)
