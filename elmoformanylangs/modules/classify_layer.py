@@ -67,7 +67,7 @@ class SampledSoftmaxLayer(nn.Module):
     if self.training:
       for i in range(y.size(0)):
         y[i] = self.word_to_column.get(y[i].tolist())
-      L = max(len(self.word_to_column), len(self.negative_samples)+1)
+      L = self.embedding_matrix.size(1)
       samples = torch.LongTensor(L).fill_(0)
       for word in self.negative_samples:
         samples[self.word_to_column[word]] = word
