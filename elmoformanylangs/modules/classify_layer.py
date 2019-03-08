@@ -32,8 +32,6 @@ class SoftmaxLayer(nn.Module):
 
 
 class SampledSoftmaxLayer(nn.Module):
-  all_word = []
-  all_word_to_column = {0: 0}
   """
 
   """
@@ -53,8 +51,8 @@ class SampledSoftmaxLayer(nn.Module):
     self.negative_samples = []
     self.word_to_column = {0: 0}
 
-    #self.all_word = []
-    #self.all_word_to_column = {0: 0}
+    self.all_word = []
+    self.all_word_to_column = {0: 0}
 
     self.column_emb = nn.Embedding(n_class, output_dim)
     self.column_emb.weight.data.uniform_(-0.25, 0.25)
@@ -66,48 +64,33 @@ class SampledSoftmaxLayer(nn.Module):
     self.oov_column.data.uniform_(-0.25, 0.25)
 
   def forward(self, x, y):
-    #print(type(y))
-    x = x.cpu()
-    _y = torch.empty(len(y), dtype=torch.int64)
-    #yy = y.cpu().tolist()
-    #print(len(y))
     if self.training:
-      for i in range(len(y)):
-        #v = y.index_select(0, torch.tensor([i], dtype=torch.int64, device=torch.device('cuda')))
-        #print(yy[i])
-        _y[i] = self.word_to_column.get(y[i])
-      samples = torch.empty(len(self.word_to_column), dtype=torch.int64).fill_(0)
+      for i in range(y.size(0)):
+        y[i] = self.word_to_column.get(y[i].tolist())
+      samples = torch.LongTensor(len(self.word_to_column)).fill_(0)
       for word in self.negative_samples:
         samples[self.word_to_column[word]] = word
     else:
-      for i in range(len(y)):
-        _y[i] = self.all_word_to_column.get(y[i], 0)
-      samples = torch.empty(len(self.all_word_to_column), dtype=torch.int64).fill_(0)
+      for i in range(y.size(0)):
+        y[i] = self.all_word_to_column.get(y[i].tolist(), 0)
+      samples = torch.LongTensor(len(self.all_word_to_column)).fill_(0)
       for word in self.all_word:
         samples[self.all_word_to_column[word]] = word
 
     if self.use_cuda:
-      _y = _y.cuda()
       samples = samples.cuda()
 
-    #print(x.size(), self.embedding_matrix.size(), _y.size(), samples.size())
-    A = x.matmul(self.embedding_matrix.cpu()).view(_y.size(0), -1)
-    A = A.to(dtype=torch.float32)
-    if self.use_cuda:
-      A = A.cuda()
-    L = min(A.size(1), samples.size(0))
-    A = A[:, :L]
-    tag_scores = A + (self.column_bias.forward(samples)).view(1, -1)[:, :L]
-    return self.criterion(tag_scores, _y)
+    tag_scores = (x.matmul(self.embedding_matrix)).view(y.size(0), -1) + \
+                 (self.column_bias.forward(samples)).view(1, -1) 
+    return self.criterion(tag_scores, y)
 
-  def update_embedding_matrix(self, c_size=0):
+  def update_embedding_matrix(self):
     word_inp, chars_inp = [], []
     if self.training:  
       columns = torch.LongTensor(len(self.negative_samples) + 1)
       samples = self.negative_samples
       for i, word in enumerate(samples):
-        if word in self.word_to_column and self.word_to_column[word] < len(columns):
-          columns[self.word_to_column[word]] = word
+        columns[self.word_to_column[word]] = word
       columns[0] = 0
     else:
       columns = torch.LongTensor(len(self.all_word) + 1)
@@ -145,8 +128,7 @@ class SampledSoftmaxLayer(nn.Module):
           else:
             while self.negative_samples[0] in in_batch:
               self.negative_samples = self.negative_samples[1:] + [self.negative_samples[0]]
-            if self.negative_samples[0] in self.word_to_column:
-              self.word_to_column[word] = self.word_to_column.pop(self.negative_samples[0])
+            self.word_to_column[word] = self.word_to_column.pop(self.negative_samples[0])
             self.negative_samples = self.negative_samples[1:] + [word]
 
 

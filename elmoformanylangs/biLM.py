@@ -57,6 +57,7 @@ def break_sentence(sentence, max_sent_len):
     cur += max_sent_len
   return ret
 
+
 def read_corpus(path, max_chars=None, max_sent_len=20):
   """
   read raw text file
@@ -276,7 +277,7 @@ class Model(nn.Module):
     if self.training and classifier_name == 'cnn_softmax' or classifier_name == 'sampled_softmax':
       mask0_ = mask_package[0].tolist()
       #mask0_ = torch.tensor([ v % len(mask0_) for v in mask0_])
-      self.classify_layer.update_negative_samples(word_inp, chars_inp, mask0_)
+      self.classify_layer.update_negative_samples(word_inp, chars_inp, mask_package[0])
       self.classify_layer.update_embedding_matrix()
 
     token_embedding = self.token_embedder(word_inp, chars_inp, (mask_package[0].size(0), mask_package[0].size(1)))
@@ -307,16 +308,18 @@ class Model(nn.Module):
     mask2 = Variable(mask_package[2].cuda()).cuda() if self.use_cuda else Variable(mask_package[2])
     mask1_ = mask_package[1].tolist()
     mask2_ = mask_package[2].tolist()
-    mask1_ = [ v % len(mask1_) for v in mask1_]
-    mask2_ = [ v % len(mask2_) for v in mask2_]
+    #mask1_ = [ v % len(mask1_) for v in mask1_]
+    #mask2_ = [ v % len(mask2_) for v in mask2_]
 
-    #forward_x = forward.contiguous().view(-1, self.output_dim).index_select(0, mask1)
-    forward_x = torch.tensor([ v for i, v in enumerate(forward_) if i in mask1_])
-    forward_y = [ v for i, v in enumerate(word_inp) if i in mask2_]
+    forward_x = forward.contiguous().view(-1, self.output_dim).index_select(0, mask1)
+    forward_y = word_inp.contiguous().view(-1).index_select(0, mask2)
+    #forward_x = torch.tensor([ v for i, v in enumerate(forward_) if i in mask1_])
+    #forward_y = [ v for i, v in enumerate(word_inp) if i in mask2_]
 
-    #backward_x = backward.contiguous().view(-1, self.output_dim).index_select(0, mask2)
-    backward_x = torch.tensor([ v for i, v in enumerate(backward_) if i in mask2_])
-    backward_y = [ v for i, v in enumerate(word_inp) if i in mask1_]
+    backward_x = backward.contiguous().view(-1, self.output_dim).index_select(0, mask2)
+    backward_y = word_inp.contiguous().view(-1).index_select(0, mask1)
+    #backward_x = torch.tensor([ v for i, v in enumerate(backward_) if i in mask2_])
+    #backward_y = [ v for i, v in enumerate(word_inp) if i in mask1_]
 
     return self.classify_layer(forward_x, forward_y), self.classify_layer(backward_x, backward_y)
 
@@ -352,8 +355,29 @@ def eval_model(model, valid):
   return np.exp(total_loss / total_tag)
 
 
+def prarallel_reader(train_w, train_c, train_lens, train_masks, parallel):
+  batch_w = []
+  batch_c = []
+  batch_l = []
+  batch_m = []
+  for i in range(len(train_w)):
+    c = i + 1
+    batch_w.extend(train_w[i])
+    batch_c.extend(train_c[i])
+    batch_l.extend(train_lens[i])
+    batch_m.extend(train_masks[i])
+    if c % parallel == 0:
+      yield batch_w, batch_c, batch_l, batch_m
+      batch_w = []
+      batch_c = []
+      batch_l = []
+      batch_m = []
+
+
+
+
 def train_model(epoch, opt, model, optimizer,
-                train, valid, test, best_train, best_valid, test_result):
+                train, valid, test, best_train, best_valid, test_result, parallel=1):
   """
   Training model for one epoch
 
@@ -385,7 +409,7 @@ def train_model(epoch, opt, model, optimizer,
   train_lens = [train_lens[l] for l in lst]
   train_masks = [train_masks[l] for l in lst]
 
-  for w, c, lens, masks in zip(train_w, train_c, train_lens, train_masks):
+  for w, c, lens, masks in prarallel_reader(train_w, train_c, train_lens, train_masks, parallel):
     cnt += 1
     model.zero_grad()
     loss_forward, loss_backward = model.forward(w, c, masks)
@@ -678,7 +702,8 @@ def train():
 
   for epoch in range(opt.max_epoch):
     best_train, best_valid, test_result = train_model(epoch, opt, model, optimizer,
-                                                      train, valid, test, best_train, best_valid, test_result)
+                                                      train, valid, test, best_train, best_valid, test_result,
+                                                      parallel=torch.cuda.device_count() if opt.parallel else 1)
     if opt.lr_decay > 0:
       optimizer.param_groups[0]['lr'] *= opt.lr_decay
 
