@@ -298,9 +298,9 @@ class Model(nn.Module):
     forward, backward = encoder_output.split(self.output_dim, 2)
 
     print(word_inp.size(), mask_package[2].size(), forward.size(), backward.size(), mask_package[0].size(),  mask_package[1].size(), mask_package[2].size())
-    #if self.use_cuda:
-    #  word_inp = word_inp.cuda()
-    word_inp = word_inp.view(-1).tolist()
+    if self.use_cuda:
+      word_inp = word_inp.cuda()
+    #word_inp = word_inp.view(-1).tolist()
     forward_ = forward.view(-1, self.output_dim).tolist()
     backward_ = backward.view(-1, self.output_dim).tolist()
 
