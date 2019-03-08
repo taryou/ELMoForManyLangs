@@ -264,7 +264,7 @@ class Model(nn.Module):
     #  self.token_embedder = nn.DataParallel(self.token_embedder)
     #  self.classify_layer = self.classify_layer.to(torch.device('cpu'))
 
-  def forward(self, word_inp, chars_inp, mask_package):
+  def forward(self, word_inp, chars_inp, mask_package, indice=0):
     """
 
     :param word_inp:
@@ -272,8 +272,12 @@ class Model(nn.Module):
     :param mask_package: Tuple[]
     :return:
     """
-    print('maskpackage_len' ,len(mask_package))
-    mask_package = mask_package[0]
+    if isinstance(indice, torch.Tensor):
+      indice_ = indice.item()
+    else:
+      indice_ = indice
+    print('maskpackage_len' ,len(mask_package), indice_)
+    mask_package = mask_package[indice_]
     classifier_name = self.config['classifier']['name'].lower()
 
     if self.training and classifier_name == 'cnn_softmax' or classifier_name == 'sampled_softmax':
@@ -362,6 +366,7 @@ def prarallel_reader(train_w, train_c, train_lens, train_masks, parallel):
   batch_c = []
   batch_l = []
   batch_m = []
+  indices = torch.tensor(range(parallel))
   print(type(train_w[0]), type(train_c[0]), type(train_lens[0]), type(train_masks[0]))
 
   for i in range(len(train_w)):
@@ -371,7 +376,7 @@ def prarallel_reader(train_w, train_c, train_lens, train_masks, parallel):
     batch_l.extend(train_lens[i])
     batch_m.append(train_masks[i])
     if c % parallel == 0:
-      yield torch.cat(batch_w, dim=0), torch.cat(batch_c, dim=0), batch_l, batch_m
+      yield torch.cat(batch_w, dim=0), torch.cat(batch_c, dim=0), batch_l, batch_m, indices
       batch_w = []
       batch_c = []
       batch_l = []
@@ -413,10 +418,10 @@ def train_model(epoch, opt, model, optimizer,
   train_lens = [train_lens[l] for l in lst]
   train_masks = [train_masks[l] for l in lst]
 
-  for w, c, lens, masks in prarallel_reader(train_w, train_c, train_lens, train_masks, parallel):
+  for w, c, lens, masks, indices in prarallel_reader(train_w, train_c, train_lens, train_masks, parallel):
     cnt += 1
     model.zero_grad()
-    loss_forward, loss_backward = model.forward(w, c, masks)
+    loss_forward, loss_backward = model.forward(w, c, masks, indice=indices)
 
     loss = (loss_forward + loss_backward) / 2.0
     total_loss += loss_forward.sum().data.item()
