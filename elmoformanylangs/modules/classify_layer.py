@@ -85,7 +85,7 @@ class SampledSoftmaxLayer(nn.Module):
 
     A = (x.matmul(self.embedding_matrix)).view(y.size(0), -1)
     if samples.size(0) > A.size(1):
-      samples = torch.cat((samples, torch.zeros(samples.size(0) - A.size(1), device=torch.device(dev))), dim=0)
+      samples = torch.cat((samples, torch.zeros(samples.size(0) - A.size(1), dtype=torch.int64, device=torch.device(dev))), dim=0)
     elif A.size(1) > samples.size(0):
       A = torch.cat((A, torch.zeros((A.size(0), A.size(1) - samples.size(0)), device=torch.device(dev)) ), dim=0)
     tag_scores = A + (self.column_bias.forward(samples)).view(1, -1)
