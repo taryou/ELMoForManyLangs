@@ -387,7 +387,10 @@ def prarallel_reader(train_w, train_c, train_lens, train_masks, parallel):
     batch_l.extend(train_lens[i])
     batch_m.append(PackObj(train_masks[i]))
     if c % parallel == 0:
-      yield torch.cat(batch_w, dim=0), torch.cat(batch_c, dim=0), batch_l, tuple(batch_m), indices
+      try:
+        yield torch.cat(batch_w, dim=0), torch.cat(batch_c, dim=0), batch_l, tuple(batch_m), indices
+      except:
+        pass
       batch_w = []
       batch_c = []
       batch_l = []
