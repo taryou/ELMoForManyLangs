@@ -371,6 +371,8 @@ class PackObj:
 
 
 def prarallel_reader(train_w, train_c, train_lens, train_masks, parallel):
+  if parallel < 1:
+    parallel = 1
   batch_w = []
   batch_c = []
   batch_l = []
@@ -411,6 +413,8 @@ def train_model(epoch, opt, model, optimizer,
   :param test_result:
   :return:
   """
+  if parallel < 1:
+    parallel = 1
   model.train()
 
   total_loss, total_tag = 0.0, 0
@@ -428,6 +432,8 @@ def train_model(epoch, opt, model, optimizer,
   train_masks = [train_masks[l] for l in lst]
 
   for w, c, lens, masks, indices in prarallel_reader(train_w, train_c, train_lens, train_masks, parallel):
+    if w.size(0) != opt.batch_size * parallel:
+      continue
     cnt += 1
     model.zero_grad()
     loss_forward, loss_backward = model.forward(w, c, masks, indice=indices)
