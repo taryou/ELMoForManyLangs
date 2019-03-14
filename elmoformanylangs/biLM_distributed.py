@@ -158,9 +158,9 @@ def average_gradients(model):
         else:
             data = param.grad.data
         dist.all_reduce(data, op=dist.reduce_op.SUM)
-        update += torch.sum(torch.abs(param.grad.data))
+        update += torch.sum(torch.abs(data))
         if param.grad is not None:
-            param.grad.data /= size
+            param.grad.data = data / size
     return update.item()
 
 
