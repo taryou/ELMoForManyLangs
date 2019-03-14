@@ -550,8 +550,7 @@ def train():
 
     for epoch in range(opt.max_epoch):
         best_train, best_valid, test_result = train_model(epoch, opt, model, optimizer,
-                                                          train, valid, test, best_train, best_valid, test_result,
-                                                          parallel=torch.cuda.device_count() if opt.parallel else 1)
+                                                          train, valid, test, best_train, best_valid, test_result, opt.rank)
         if opt.lr_decay > 0:
             optimizer.param_groups[0]['lr'] *= opt.lr_decay
 
