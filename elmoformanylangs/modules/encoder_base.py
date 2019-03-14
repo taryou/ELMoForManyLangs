@@ -24,6 +24,7 @@ class _EncoderBase(torch.nn.Module):
     sorted by length. Finally, it also provides optional statefulness to all of it's
     subclasses by allowing the caching and retrieving of the hidden states of RNNs.
     """
+
     def __init__(self, stateful: bool = False) -> None:
         super(_EncoderBase, self).__init__()
         self.stateful = stateful
@@ -89,7 +90,7 @@ class _EncoderBase(torch.nn.Module):
         num_valid = torch.sum(mask[:, 0]).int().item()
 
         sequence_lengths = get_lengths_from_binary_sequence_mask(mask)
-        sorted_inputs, sorted_sequence_lengths, restoration_indices, sorting_indices =\
+        sorted_inputs, sorted_sequence_lengths, restoration_indices, sorting_indices = \
             sort_batch_by_length(inputs, sequence_lengths)
 
         # Now create a PackedSequence with only the non-empty, sorted sequences.

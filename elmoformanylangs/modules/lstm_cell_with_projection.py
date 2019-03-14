@@ -10,6 +10,7 @@ from torch.autograd import Variable
 
 from .util import block_orthogonal, get_dropout_mask
 
+
 class LstmCellWithProjection(torch.nn.Module):
     """
     An LSTM with Recurrent Dropout and a projected and clipped hidden state and
@@ -50,6 +51,7 @@ class LstmCellWithProjection(torch.nn.Module):
         respectively. The first dimension is 1 in order to match the Pytorch
         API for returning stacked LSTM states.
     """
+
     def __init__(self,
                  input_size: int,
                  hidden_size: int,
@@ -161,7 +163,7 @@ class LstmCellWithProjection(torch.nn.Module):
                 # Second conditional: Does the next shortest sequence beyond the current batch
                 # index require computation use this timestep?
                 while current_length_index < (len(batch_lengths) - 1) and \
-                                batch_lengths[current_length_index + 1] > index:
+                        batch_lengths[current_length_index + 1] > index:
                     current_length_index += 1
 
             # Actually get the slices of the batch which we

@@ -4,205 +4,311 @@ import random
 import torch
 import torch.nn as nn
 import logging
-from torch.autograd import Variable
+import torch.nn.functional as F
 from .modules.elmo import ElmobiLm
 from .modules.lstm import LstmbiLm
 from .modules.token_embedder import ConvTokenEmbedder, LstmTokenEmbedder
+from .modules.classify_layer import SoftmaxLayer, CNNSoftmaxLayer, SampledSoftmaxLayer
 
 
-def create_one_batch(x, word2id, char2id, config, oov='<oov>', pad='<pad>', sort=True):
-  """
-  Create one batch of input.
+def create_one_batch(x, word2id, char2id, config, oov='<oov>', pad='<pad>', sort=True, device='cpu'):
+    """
+    Create one batch of input.
 
-  :param x: List[List[str]]
-  :param word2id: Dict | None
-  :param char2id: Dict | None
-  :param config: Dict
-  :param oov: str, the form of OOV token.
-  :param pad: str, the form of padding token.
-  :param sort: bool, specify whether sorting the sentences by their lengths.
-  :return:
-  """
-  batch_size = len(x)
-  # lst represents the order of sentences
-  lst = list(range(batch_size))
-  if sort:
-    lst.sort(key=lambda l: -len(x[l]))
+    :param x: List[List[str]]
+    :param word2id: Dict | None
+    :param char2id: Dict | None
+    :param config: Dict
+    :param oov: str, the form of OOV token.
+    :param pad: str, the form of padding token.
+    :param sort: bool, specify whether sorting the sentences by their lengths.
+    :return:
+    """
+    batch_size = len(x)
+    # lst represents the order of sentences
+    lst = list(range(batch_size))
+    if sort:
+        lst.sort(key=lambda l: -len(x[l]))
 
-  # shuffle the sentences by
-  x = [x[i] for i in lst]
-  lens = [len(x[i]) for i in lst]
-  max_len = max(lens)
+    # shuffle the sentences by
+    x = [x[i] for i in lst]
+    lens = [len(x[i]) for i in lst]
+    max_len = max(lens)
 
-  # get a batch of word id whose size is (batch x max_len)
-  if word2id is not None:
-    oov_id, pad_id = word2id.get(oov, None), word2id.get(pad, None)
-    assert oov_id is not None and pad_id is not None
-    batch_w = torch.LongTensor(batch_size, max_len).fill_(pad_id)
-    for i, x_i in enumerate(x):
-      for j, x_ij in enumerate(x_i):
-        batch_w[i][j] = word2id.get(x_ij, oov_id)
-  else:
-    batch_w = None
-
-  # get a batch of character id whose size is (batch x max_len x max_chars)
-  if char2id is not None:
-    bow_id, eow_id, oov_id, pad_id = [char2id.get(key, None) for key in ('<eow>', '<bow>', oov, pad)]
-
-    assert bow_id is not None and eow_id is not None and oov_id is not None and pad_id is not None
-
-    if config['token_embedder']['name'].lower() == 'cnn':
-      max_chars = config['token_embedder']['max_characters_per_token']
-      assert max([len(w) for i in lst for w in x[i]]) + 2 <= max_chars
-    elif config['token_embedder']['name'].lower() == 'lstm':
-      # counting the <bow> and <eow>
-      max_chars = max([len(w) for i in lst for w in x[i]]) + 2
+    # get a batch of word id whose size is (batch x max_len)
+    if word2id is not None:
+        oov_id, pad_id = word2id.get(oov, None), word2id.get(pad, None)
+        assert oov_id is not None and pad_id is not None
+        batch_w = torch.empty(batch_size, max_len, dtype=torch.int64, device=device).fill_(pad_id)
+        for i, x_i in enumerate(x):
+            for j, x_ij in enumerate(x_i):
+                batch_w[i][j] = word2id.get(x_ij, oov_id)
     else:
-      raise ValueError('Unknown token_embedder: {0}'.format(config['token_embedder']['name']))
+        batch_w = None
 
-    batch_c = torch.LongTensor(batch_size, max_len, max_chars).fill_(pad_id)
+    # get a batch of character id whose size is (batch x max_len x max_chars)
+    if char2id is not None:
+        bow_id, eow_id, oov_id, pad_id = [char2id.get(key, None) for key in ('<eow>', '<bow>', oov, pad)]
+
+        assert bow_id is not None and eow_id is not None and oov_id is not None and pad_id is not None
+
+        if config['token_embedder']['name'].lower() == 'cnn':
+            max_chars = config['token_embedder']['max_characters_per_token']
+            assert max([len(w) for i in lst for w in x[i]]) + 2 <= max_chars
+        elif config['token_embedder']['name'].lower() == 'lstm':
+            # counting the <bow> and <eow>
+            max_chars = max([len(w) for i in lst for w in x[i]]) + 2
+        else:
+            raise ValueError('Unknown token_embedder: {0}'.format(config['token_embedder']['name']))
+
+        batch_c = torch.empty(batch_size, max_len, max_chars, dtype=torch.int64, device=device).fill_(pad_id)
+
+        for i, x_i in enumerate(x):
+            for j, x_ij in enumerate(x_i):
+                batch_c[i][j][0] = bow_id
+                if x_ij == '<bos>' or x_ij == '<eos>':
+                    batch_c[i][j][1] = char2id.get(x_ij)
+                    batch_c[i][j][2] = eow_id
+                else:
+                    for k, c in enumerate(x_ij):
+                        batch_c[i][j][k + 1] = char2id.get(c, oov_id)
+                    batch_c[i][j][len(x_ij) + 1] = eow_id
+    else:
+        batch_c = None
+
+    # mask[0] is the matrix (batch x max_len) indicating whether
+    # there is an id is valid (not a padding) in this batch.
+    # mask[1] stores the flattened ids indicating whether there is a valid
+    # previous token
+    # mask[2] stores the flattened ids indicating whether there is a valid
+    # next token
+    masks = [torch.LongTensor(batch_size, max_len).fill_(0), [], []]
 
     for i, x_i in enumerate(x):
-      for j, x_ij in enumerate(x_i):
-        batch_c[i][j][0] = bow_id
-        if x_ij == '<bos>' or x_ij == '<eos>':
-          batch_c[i][j][1] = char2id.get(x_ij)
-          batch_c[i][j][2] = eow_id
-        else:
-          for k, c in enumerate(x_ij):
-            batch_c[i][j][k + 1] = char2id.get(c, oov_id)
-          batch_c[i][j][len(x_ij) + 1] = eow_id
-  else:
-    batch_c = None
+        for j in range(len(x_i)):
+            masks[0][i][j] = 1
+            if j + 1 < len(x_i):
+                masks[1].append(i * max_len + j)
+            if j > 0:
+                masks[2].append(i * max_len + j)
 
-  # mask[0] is the matrix (batch x max_len) indicating whether
-  # there is an id is valid (not a padding) in this batch.
-  # mask[1] stores the flattened ids indicating whether there is a valid
-  # previous token
-  # mask[2] stores the flattened ids indicating whether there is a valid
-  # next token
-  masks = [torch.LongTensor(batch_size, max_len).fill_(0), [], []]
+    assert len(masks[1]) <= batch_size * max_len
+    assert len(masks[2]) <= batch_size * max_len
 
-  for i, x_i in enumerate(x):
-    for j in range(len(x_i)):
-      masks[0][i][j] = 1
-      if j + 1 < len(x_i):
-        masks[1].append(i * max_len + j)
-      if j > 0:
-        masks[2].append(i * max_len + j)
+    masks[1] = torch.tensor(masks[1], dtype=torch.int64, device=device)
+    masks[2] = torch.tensor(masks[2], dtype=torch.int64, device=device)
 
-  assert len(masks[1]) <= batch_size * max_len
-  assert len(masks[2]) <= batch_size * max_len
-
-  masks[1] = torch.LongTensor(masks[1])
-  masks[2] = torch.LongTensor(masks[2])
-
-  return batch_w, batch_c, lens, masks
+    return batch_w, batch_c, lens, masks
 
 
 # shuffle training examples and create mini-batches
-def create_batches(x, batch_size, word2id, char2id, config, perm=None, shuffle=True, sort=True, text=None):
-  """
+def create_batches(x, batch_size, word2id, char2id, config, perm=None, shuffle=True, sort=True, text=None, device='cpu'):
+    """
 
-  :param x: List[List[str]]
-  :param batch_size:
-  :param word2id:
-  :param char2id:
-  :param config:
-  :param perm:
-  :param shuffle:
-  :param sort:
-  :param text:
-  :return:
-  """
-  lst = perm or list(range(len(x)))
-  if shuffle:
-    random.shuffle(lst)
+    :param x: List[List[str]]
+    :param batch_size:
+    :param word2id:
+    :param char2id:
+    :param config:
+    :param perm:
+    :param shuffle:
+    :param sort:
+    :param text:
+    :return:
+    """
+    lst = perm or list(range(len(x)))
+    if shuffle:
+        random.shuffle(lst)
 
-  if sort:
-    lst.sort(key=lambda l: -len(x[l]))
+    if sort:
+        lst.sort(key=lambda l: -len(x[l]))
 
-  x = [x[i] for i in lst]
-  if text is not None:
-    text = [text[i] for i in lst]
-
-  sum_len = 0.0
-  batches_w, batches_c, batches_lens, batches_masks, batches_text = [], [], [], [], []
-  size = batch_size
-  nbatch = (len(x) - 1) // size + 1
-  for i in range(nbatch):
-    start_id, end_id = i * size, (i + 1) * size
-    bw, bc, blens, bmasks = create_one_batch(x[start_id: end_id], word2id, char2id, config, sort=sort)
-    sum_len += sum(blens)
-    batches_w.append(bw)
-    batches_c.append(bc)
-    batches_lens.append(blens)
-    batches_masks.append(bmasks)
+    x = [x[i] for i in lst]
     if text is not None:
-      batches_text.append(text[start_id: end_id])
+        text = [text[i] for i in lst]
 
-  if sort:
-    perm = list(range(nbatch))
-    random.shuffle(perm)
-    batches_w = [batches_w[i] for i in perm]
-    batches_c = [batches_c[i] for i in perm]
-    batches_lens = [batches_lens[i] for i in perm]
-    batches_masks = [batches_masks[i] for i in perm]
+    sum_len = 0.0
+    batches_w, batches_c, batches_lens, batches_masks, batches_text = [], [], [], [], []
+    size = batch_size
+    nbatch = (len(x) - 1) // size + 1
+    for i in range(nbatch):
+        start_id, end_id = i * size, (i + 1) * size
+        bw, bc, blens, bmasks = create_one_batch(x[start_id: end_id], word2id, char2id, config, sort=sort, device=device)
+        sum_len += sum(blens)
+        batches_w.append(bw)
+        batches_c.append(bc)
+        batches_lens.append(blens)
+        batches_masks.append(bmasks)
+        if text is not None:
+            batches_text.append(text[start_id: end_id])
+
+    if sort:
+        perm = list(range(nbatch))
+        random.shuffle(perm)
+        batches_w = [batches_w[i] for i in perm]
+        batches_c = [batches_c[i] for i in perm]
+        batches_lens = [batches_lens[i] for i in perm]
+        batches_masks = [batches_masks[i] for i in perm]
+        if text is not None:
+            batches_text = [batches_text[i] for i in perm]
+
+    logging.info("{} batches, avg len: {:.1f}".format(nbatch, sum_len / len(x)))
     if text is not None:
-      batches_text = [batches_text[i] for i in perm]
+        return batches_w, batches_c, batches_lens, batches_masks, batches_text
+    return batches_w, batches_c, batches_lens, batches_masks
 
-  logging.info("{} batches, avg len: {:.1f}".format(nbatch, sum_len / len(x)))
-  if text is not None:
-    return batches_w, batches_c, batches_lens, batches_masks, batches_text
-  return batches_w, batches_c, batches_lens, batches_masks
+
+class PackObj:
+
+    def __init__(self, data):
+        self.data = data
 
 
 class Model(nn.Module):
-  def __init__(self, config, word_emb_layer, char_emb_layer, use_cuda=False):
-    super(Model, self).__init__()
-    self.use_cuda = use_cuda
-    self.config = config
+    def __init__(self, config, word_emb_layer, char_emb_layer, device):
+        super(Model, self).__init__()
+        self.config = config
+        self.device = device
 
-    if config['token_embedder']['name'].lower() == 'cnn':
-      self.token_embedder = ConvTokenEmbedder(
-        config, word_emb_layer, char_emb_layer, use_cuda)
-    elif config['token_embedder']['name'].lower() == 'lstm':
-      self.token_embedder = LstmTokenEmbedder(
-        config, word_emb_layer, char_emb_layer, use_cuda)
+        if config['token_embedder']['name'].lower() == 'cnn':
+            self.token_embedder = ConvTokenEmbedder(config, word_emb_layer, char_emb_layer)
+        elif config['token_embedder']['name'].lower() == 'lstm':
+            self.token_embedder = LstmTokenEmbedder(config, word_emb_layer, char_emb_layer)
 
-    if config['encoder']['name'].lower() == 'elmo':
-      self.encoder = ElmobiLm(config, use_cuda)
-    elif config['encoder']['name'].lower() == 'lstm':
-      self.encoder = LstmbiLm(config, use_cuda)
+        if config['encoder']['name'].lower() == 'elmo':
+            self.encoder = ElmobiLm(config)
+        elif config['encoder']['name'].lower() == 'lstm':
+            self.encoder = LstmbiLm(config)
 
-    self.output_dim = config['encoder']['projection_dim']
+        self.output_dim = config['encoder']['projection_dim']
 
-  def forward(self, word_inp, chars_package, mask_package):
-    """
+    def forward(self, word_inp, chars_package, mask_package):
+        """
 
-    :param word_inp:
-    :param chars_package:
-    :param mask_package:
-    :return:
-    """
-    token_embedding = self.token_embedder(word_inp, chars_package, (mask_package[0].size(0), mask_package[0].size(1)))
-    if self.config['encoder']['name'] == 'elmo':
-      mask = Variable(mask_package[0]).cuda() if self.use_cuda else Variable(mask_package[0])
-      encoder_output = self.encoder(token_embedding, mask)
-      sz = encoder_output.size()
-      token_embedding = torch.cat(
-        [token_embedding, token_embedding], dim=2).view(1, sz[1], sz[2], sz[3])
-      encoder_output = torch.cat(
-        [token_embedding, encoder_output], dim=0)
-    elif self.config['encoder']['name'] == 'lstm':
-      encoder_output = self.encoder(token_embedding)
-    else:
-      raise ValueError('Unknown encoder: {0}'.format(self.config['encoder']['name']))
+        :param word_inp:
+        :param chars_package:
+        :param mask_package:
+        :return:
+        """
+        token_embedding = self.token_embedder(word_inp, chars_package,
+                                              (mask_package[0].size(0), mask_package[0].size(1)))
+        if self.config['encoder']['name'] == 'elmo':
+            mask = mask_package[0].to(self.device)
+            encoder_output = self.encoder(token_embedding, mask)
+            sz = encoder_output.size()
+            token_embedding = torch.cat(
+                [token_embedding, token_embedding], dim=2).view(1, sz[1], sz[2], sz[3])
+            encoder_output = torch.cat(
+                [token_embedding, encoder_output], dim=0)
+        elif self.config['encoder']['name'] == 'lstm':
+            encoder_output = self.encoder(token_embedding)
+        else:
+            raise ValueError('Unknown encoder: {0}'.format(self.config['encoder']['name']))
 
-    return encoder_output
+        return encoder_output
 
-  def load_model(self, path):
-    self.token_embedder.load_state_dict(torch.load(os.path.join(path, 'token_embedder.pkl'),
-                                                   map_location=lambda storage, loc: storage))
-    self.encoder.load_state_dict(torch.load(os.path.join(path, 'encoder.pkl'),
-                                            map_location=lambda storage, loc: storage))
+    def load_model(self, path):
+        self.token_embedder.load_state_dict(torch.load(os.path.join(path, 'token_embedder.pkl'),
+                                                       map_location=lambda storage, loc: storage))
+        self.encoder.load_state_dict(torch.load(os.path.join(path, 'encoder.pkl'),
+                                                map_location=lambda storage, loc: storage))
+
+
+class TrainModel(nn.Module):
+    def __init__(self, config, word_emb_layer, char_emb_layer, n_class, device, use_parallel=False):
+        super(TrainModel, self).__init__()
+        self.device = device
+        self.use_parallel = use_parallel
+        self.config = config
+
+        if config['token_embedder']['name'].lower() == 'cnn':
+            self.token_embedder = ConvTokenEmbedder(config, word_emb_layer, char_emb_layer)
+        elif config['token_embedder']['name'].lower() == 'lstm':
+            self.token_embedder = LstmTokenEmbedder(config, word_emb_layer, char_emb_layer)
+
+        if config['encoder']['name'].lower() == 'elmo':
+            self.encoder = ElmobiLm(config)
+        elif config['encoder']['name'].lower() == 'lstm':
+            self.encoder = LstmbiLm(config)
+
+        self.output_dim = config['encoder']['projection_dim']
+        if config['classifier']['name'].lower() == 'softmax':
+            self.classify_layer = SoftmaxLayer(self.output_dim, n_class)
+        elif config['classifier']['name'].lower() == 'cnn_softmax':
+            self.classify_layer = CNNSoftmaxLayer(self.token_embedder, self.output_dim, n_class,
+                                                  config['classifier']['n_samples'],
+                                                  config['classifier']['corr_dim'], device)
+        elif config['classifier']['name'].lower() == 'sampled_softmax':
+            self.classify_layer = SampledSoftmaxLayer(self.output_dim, n_class,
+                                                      config['classifier']['n_samples'], device)
+
+        # if use_parallel:
+        #  self.encoder = nn.DataParallel(self.encoder)
+        #  self.token_embedder = nn.DataParallel(self.token_embedder)
+        #  self.classify_layer = self.classify_layer.to(torch.device('cpu'))
+
+    def forward(self, word_inp, chars_inp, mask_package):
+        """
+
+        :param word_inp:
+        :param chars_inp:
+        :param mask_package: Tuple[]
+        :return:
+        """
+
+        if isinstance(mask_package, PackObj):
+            print('pack obj')
+            mask_package = mask_package.data
+        classifier_name = self.config['classifier']['name'].lower()
+
+        if self.training and classifier_name == 'cnn_softmax' or classifier_name == 'sampled_softmax':
+            self.classify_layer.update_negative_samples(word_inp, chars_inp, mask_package[0])
+            self.classify_layer.update_embedding_matrix()
+
+        token_embedding = self.token_embedder(word_inp, chars_inp, (mask_package[0].size(0), mask_package[0].size(1)))
+        token_embedding = F.dropout(token_embedding, self.config['dropout'], self.training)
+
+        encoder_name = self.config['encoder']['name'].lower()
+        if encoder_name == 'elmo':
+            mask = mask_package[0].to(self.device)
+            encoder_output = self.encoder(token_embedding, mask)
+            encoder_output = encoder_output[1]
+            # [batch_size, len, hidden_size]
+        elif encoder_name == 'lstm':
+            encoder_output = self.encoder(token_embedding)
+        else:
+            raise ValueError('')
+
+        encoder_output = F.dropout(encoder_output, self.config['dropout'], self.training)
+        forward, backward = encoder_output.split(self.output_dim, 2)
+
+        print(word_inp.size(), mask_package[2].size(), forward.size(), backward.size(), mask_package[0].size(),
+              mask_package[1].size(), mask_package[2].size())
+
+        word_inp = word_inp.to(self.device)
+
+        mask1 = mask_package[1].to(self.device)
+        mask2 = mask_package[2].to(self.device)
+
+        forward_x = forward.contiguous().view(-1, self.output_dim).index_select(0, mask1)
+        forward_y = word_inp.contiguous().view(-1).index_select(0, mask2)
+
+        backward_x = backward.contiguous().view(-1, self.output_dim).index_select(0, mask2)
+        backward_y = word_inp.contiguous().view(-1).index_select(0, mask1)
+
+        return self.classify_layer(forward_x, forward_y), self.classify_layer(backward_x, backward_y)
+
+    def save_model(self, path, save_classify_layer):
+        if False:  # self.use_parallel:
+            torch.save(self.token_embedder.module.state_dict(), os.path.join(path, 'token_embedder.pkl'))
+            torch.save(self.encoder.module.state_dict(), os.path.join(path, 'encoder.pkl'))
+        else:
+            torch.save(self.token_embedder.state_dict(), os.path.join(path, 'token_embedder.pkl'))
+            torch.save(self.encoder.state_dict(), os.path.join(path, 'encoder.pkl'))
+        if save_classify_layer:
+            torch.save(self.classify_layer.state_dict(), os.path.join(path, 'classifier.pkl'))
+
+    def load_model(self, path):
+        self.token_embedder.load_state_dict(torch.load(os.path.join(path, 'token_embedder.pkl')))
+        self.encoder.load_state_dict(torch.load(os.path.join(path, 'encoder.pkl')))
+        self.classify_layer.load_state_dict(torch.load(os.path.join(path, 'classifier.pkl')))

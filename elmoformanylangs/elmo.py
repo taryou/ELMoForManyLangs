@@ -130,7 +130,7 @@ class Embedder(object):
             char_emb_layer = EmbeddingLayer(
                 config['token_embedder']['char_dim'], self.char_lexicon, fix_emb=False, embs=None)
             logging.info('char embedding size: ' +
-                        str(len(char_emb_layer.word2id)))
+                         str(len(char_emb_layer.word2id)))
         else:
             self.char_lexicon = None
             char_emb_layer = None
@@ -148,7 +148,7 @@ class Embedder(object):
             word_emb_layer = EmbeddingLayer(
                 config['token_embedder']['word_dim'], self.word_lexicon, fix_emb=False, embs=None)
             logging.info('word embedding size: ' +
-                        str(len(word_emb_layer.word2id)))
+                         str(len(word_emb_layer.word2id)))
         else:
             self.word_lexicon = None
             word_emb_layer = None
@@ -188,12 +188,12 @@ class Embedder(object):
             for i, text in enumerate(texts):
 
                 if self.config['encoder']['name'].lower() == 'lstm':
-                    data = output[i, 1:lens[i]-1, :].data
+                    data = output[i, 1:lens[i] - 1, :].data
                     if self.use_cuda:
                         data = data.cpu()
                     data = data.numpy()
                 elif self.config['encoder']['name'].lower() == 'elmo':
-                    data = output[:, i, 1:lens[i]-1, :].data
+                    data = output[:, i, 1:lens[i] - 1, :].data
                     if self.use_cuda:
                         data = data.cpu()
                     data = data.numpy()

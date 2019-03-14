@@ -10,10 +10,9 @@ from .highway import Highway
 
 
 class LstmTokenEmbedder(nn.Module):
-  def __init__(self, config, word_emb_layer, char_emb_layer, use_cuda=False):
+  def __init__(self, config, word_emb_layer, char_emb_layer):
     super(LstmTokenEmbedder, self).__init__()
     self.config = config
-    self.use_cuda = use_cuda
     self.word_emb_layer = word_emb_layer
     self.char_emb_layer = char_emb_layer
     self.output_dim = config['encoder']['projection_dim']
@@ -48,10 +47,9 @@ class LstmTokenEmbedder(nn.Module):
 
 
 class ConvTokenEmbedder(nn.Module):
-  def __init__(self, config, word_emb_layer, char_emb_layer, use_cuda):
+  def __init__(self, config, word_emb_layer, char_emb_layer):
     super(ConvTokenEmbedder, self).__init__()
     self.config = config
-    self.use_cuda = use_cuda
 
     self.word_emb_layer = word_emb_layer
     self.char_emb_layer = char_emb_layer

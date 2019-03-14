@@ -27,6 +27,7 @@ class Highway(torch.nn.Module):
     activation : ``Callable[[torch.Tensor], torch.Tensor]``, optional (default=``torch.nn.functional.relu``)
         The non-linearity to use in the highway layers.
     """
+
     def __init__(self,
                  input_dim: int,
                  num_layers: int = 1,
