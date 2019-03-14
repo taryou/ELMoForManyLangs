@@ -219,6 +219,7 @@ def train_model(epoch, opt, model, optimizer,
             torch.nn.utils.clip_grad_norm_(model.parameters(), opt.clip_grad)
 
         update = average_gradients(model)
+        logging.info("Update: {}".format(update))
         optimizer.step()
 
         cnt += 1
