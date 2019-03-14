@@ -518,7 +518,7 @@ def train():
 
     nclasses = len(label_to_ix)
 
-    model = TrainModel(config, word_emb_layer, char_emb_layer, nclasses, device, opt.parallel)
+    model = TrainModel(config, word_emb_layer, char_emb_layer, nclasses, device)
     model.to(device)
     if os.path.exists(os.path.join(opt.model, 'token_embedder.pkl')):
         logging.info('use resume')
