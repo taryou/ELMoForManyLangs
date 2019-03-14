@@ -152,7 +152,9 @@ def average_gradients(model):
     size = float(dist.get_world_size())
     update = 0
     for param in model.parameters():
-        print(param.grad, dir(param.grad))
+        if param.grad is None:
+            print(param)
+            continue
         dist.all_reduce(param.grad.data, op=dist.reduce_op.SUM)
         update += torch.sum(torch.abs(param.grad.data))
         param.grad.data /= size
