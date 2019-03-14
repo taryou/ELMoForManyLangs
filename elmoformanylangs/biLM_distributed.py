@@ -474,6 +474,8 @@ def train():
 
     if opt.word_embedding is not None:
         embs = load_embedding(opt.word_embedding)
+    else:
+        embs = None
 
     word_lexicon = {}
     with codecs.open(os.path.join(opt.model, 'word.dic'), 'r', encoding='utf-8') as fpi:
