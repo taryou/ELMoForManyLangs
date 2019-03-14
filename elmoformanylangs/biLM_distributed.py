@@ -201,13 +201,15 @@ def train_model(epoch, opt, model, optimizer,
 
     #for w, c, lens, masks in zip(train_w, train_c, train_lens, train_masks):
     while True:
+
+        model.zero_grad()
+
         if cnt < L:
             w = train_w[cnt]
             c = train_c[cnt]
             lens = train_lens[cnt]
             masks = train_masks[cnt]
 
-            model.zero_grad()
             loss_forward, loss_backward = model.forward(w, c, masks)
 
             loss = (loss_forward + loss_backward) / 2.0
