@@ -153,7 +153,7 @@ def average_gradients(model):
     update = 0
     for param in model.parameters():
         if param.grad is None:
-            data = param.data.new_tensor(param.data)
+            data = param.data.clone().detach()
             data.fill_(0)
         else:
             data = param.grad.data
