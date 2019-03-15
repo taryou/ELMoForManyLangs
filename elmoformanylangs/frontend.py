@@ -309,6 +309,6 @@ class TrainModel(nn.Module):
             torch.save(self.classify_layer.state_dict(), os.path.join(path, 'classifier.pkl'))
 
     def load_model(self, path):
-        self.token_embedder.load_state_dict(torch.load(os.path.join(path, 'token_embedder.pkl')))
-        self.encoder.load_state_dict(torch.load(os.path.join(path, 'encoder.pkl')))
-        self.classify_layer.load_state_dict(torch.load(os.path.join(path, 'classifier.pkl')))
+        self.token_embedder.load_state_dict(torch.load(os.path.join(path, 'token_embedder.pkl'), map_location=torch.device('cpu')))
+        self.encoder.load_state_dict(torch.load(os.path.join(path, 'encoder.pkl'), map_location=torch.device('cpu')))
+        self.classify_layer.load_state_dict(torch.load(os.path.join(path, 'classifier.pkl'), map_location=torch.device('cpu')))
