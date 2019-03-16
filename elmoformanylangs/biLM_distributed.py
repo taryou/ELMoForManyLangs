@@ -380,8 +380,8 @@ def train():
     cmd.add_argument('--config_path', required=True, help='the path to the config file.')
     cmd.add_argument("--word_embedding", help="The path to word vectors.")
 
-    cmd.add_argument('--optimizer', default='sgd', choices=['sgd', 'adam', 'adagrad'],
-                     help='the type of optimizer: valid options=[sgd, adam, adagrad]')
+    cmd.add_argument('--optimizer', default='sgd', choices=['sgd', 'adam', 'adagrad', 'adabound'],
+                     help='the type of optimizer: valid options=[sgd, adam, adagrad, adabound]')
     cmd.add_argument("--lr", type=float, default=0.01, help='the learning rate.')
     cmd.add_argument("--lr_decay", type=float, default=0, help='the learning rate decay.')
     cmd.add_argument("--final_lr", type=float, default=0.01, help='the learning rate decay.')
