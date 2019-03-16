@@ -15,6 +15,7 @@ import threading
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import adabound
 import torch.distributed as dist
 from .modules.embedding_layer import EmbeddingLayer
 from .dataloader import load_embedding
@@ -383,6 +384,7 @@ def train():
                      help='the type of optimizer: valid options=[sgd, adam, adagrad]')
     cmd.add_argument("--lr", type=float, default=0.01, help='the learning rate.')
     cmd.add_argument("--lr_decay", type=float, default=0, help='the learning rate decay.')
+    cmd.add_argument("--final_lr", type=float, default=0.01, help='the learning rate decay.')
 
     cmd.add_argument("--model", required=True, help="path to save model")
 
@@ -542,6 +544,8 @@ def train():
         optimizer = optim.SGD(filter(need_grad, model.parameters()), lr=opt.lr)
     elif opt.optimizer.lower() == 'adagrad':
         optimizer = optim.Adagrad(filter(need_grad, model.parameters()), lr=opt.lr)
+    elif opt.optimizer.lower() == 'adabound':
+        optimizer = adabound.AdaBound(filter(need_grad, model.parameters()), lr=opt.lr, final_lr=opt.final_lr)
     else:
         raise ValueError('Unknown optimizer {}'.format(opt.optimizer.lower()))
 

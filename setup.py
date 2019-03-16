@@ -11,6 +11,7 @@ setuptools.setup(
     "h5py",
     "numpy",
     "overrides",
+    "adabound"
   ],
   classifiers=[
     "Development Status :: 2 - Pre-Alpha",
